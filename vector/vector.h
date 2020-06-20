@@ -69,7 +69,7 @@ struct vector {
     }
 
     void reserve(size_t n) {
-        increase_capacity(next_power(n));
+        increase_capacity(n);
     }
 
     void shrink_to_fit();
@@ -113,11 +113,10 @@ private:
 
     void increase_capacity(size_t new_capacity);
 
-    size_t next_power(size_t n);
-
     T* data_;
     size_t size_;
     size_t capacity_;
+    const size_t min_capacity = 4;
 };
 
 
@@ -143,15 +142,6 @@ vector<T>::vector(size_t size, size_t capacity, T const* data) : size_(0), capac
 }
 
 template<typename T>
-size_t vector<T>::next_power(size_t n) {
-    size_t result = 1;
-    while (result <= n) {
-        result *= 2;
-    }
-    return result;
-}
-
-template<typename T>
 void vector<T>::increase_capacity(size_t capacity) {
     if (capacity <= capacity_) {
         return;
@@ -174,7 +164,11 @@ template<typename T>
 void vector<T>::push_back(const T& value) {
     if (size_ == capacity_) {
         T safe = value;
-        increase_capacity(next_power(capacity_));
+        if (capacity_ > 0) {
+            increase_capacity(2 * capacity_);
+        } else {
+            increase_capacity(min_capacity);
+        }
         new(end()) T(safe);
     } else {
         new(end()) T(value);
