@@ -24,13 +24,13 @@ big_integer::big_integer() : number(), sign(false) {}
 
 big_integer::big_integer(big_integer const &other) = default;
 
-big_integer::big_integer(int a) : sign(a < 0), number() {
+big_integer::big_integer(int a) : number(), sign(a < 0) {
     if (a != 0) {
         number.push_back(abs(a));
     }
 }
 
-big_integer::big_integer(unsigned a) : sign(false), number() {
+big_integer::big_integer(unsigned a) : number(), sign(false) {
     if (a != 0) {
         number.push_back(a);
     }
@@ -222,10 +222,7 @@ big_integer operator/(big_integer a, uint32_t const &b) {
 }
 
 big_integer operator/(big_integer a, int const &b) {
-    big_integer result = a / static_cast<uint32_t>(abs(b));
-    result.sign = (a.sign != (b < 0));
-    result.normalize();
-    return result;
+    return a / big_integer(b);
 }
 
 
