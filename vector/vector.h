@@ -1,6 +1,9 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include <cstddef>
+#include <algorithm>
+
 template<typename T>
 struct vector {
     using iterator = T*;
@@ -119,7 +122,7 @@ private:
 
 
 template<typename T>
-vector<T>::vector(size_t size, size_t capacity, T const* data) : capacity_(capacity), size_(0) {
+vector<T>::vector(size_t size, size_t capacity, T const* data) : size_(0), capacity_(capacity) {
     if (capacity != 0) {
         data_ = static_cast<T*>(operator new(capacity * sizeof(T)));
     } else {
