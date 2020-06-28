@@ -69,6 +69,7 @@ private:
     void normalize();
     std::vector<uint32_t> number;
     bool sign{};
+    static const uint32_t element_length = 32;
 };
 
 
