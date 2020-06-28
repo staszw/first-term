@@ -9,6 +9,7 @@
 #include <string>
 #include <algorithm>
 #include <ostream>
+#include <functional>
 
 
 void big_integer::normalize() {
@@ -25,7 +26,9 @@ big_integer::big_integer() : number(), sign(false) {}
 big_integer::big_integer(big_integer const &other) = default;
 
 big_integer::big_integer(int a) : number(), sign(a < 0) {
-    if (a != 0) {
+    if (a == INT32_MIN) {
+        number.push_back(static_cast<uint32_t>(a));
+    } else if (a != 0) {
         number.push_back(abs(a));
     }
 }
@@ -176,8 +179,11 @@ big_integer operator-(big_integer a, big_integer const &b) {
         a.number[i] = static_cast<uint32_t>(diff);
         carry = diff >> 63u;
     }
-    if (carry > 0) {
-        a.number[b.number.size()] -= carry;
+    for (size_t i = b.number.size(); i < a.number.size() && carry > 0; i++) {
+        uint64_t x = a.number[i];
+        uint64_t diff = x - carry;
+        a.number[i] = static_cast<uint32_t>(diff);
+        carry = diff >> 63u;
     }
     a.normalize();
     return a;
@@ -210,7 +216,7 @@ big_integer operator*(big_integer a, big_integer const &b) {
     return result;
 }
 
-big_integer operator/(big_integer a, uint32_t const &b) {
+big_integer operator/(big_integer a, uint32_t b) {
     uint32_t carry = 0;
     for (ptrdiff_t i = a.number.size() - 1; i >= 0; i--) {
         uint64_t tmp = (static_cast<uint64_t>(carry) << 32u) + a.number[i];
@@ -221,7 +227,7 @@ big_integer operator/(big_integer a, uint32_t const &b) {
     return a;
 }
 
-big_integer operator/(big_integer a, int const &b) {
+big_integer operator/(big_integer a, int b) {
     return a / big_integer(b);
 }
 
@@ -278,91 +284,61 @@ big_integer operator%(const big_integer &a, big_integer const &b) {
     return a - (a / b) * b;
 }
 
-big_integer big_integer::to_bits() const {
-    big_integer result(*this);
+void big_integer::to_bits() {
     if (sign) {
-        result++;
-        for (uint32_t &i : result.number) {
+        sign = false;
+        operator--();
+        for (uint32_t& i : number) {
             i = ~i;
         }
+        sign = true;
     }
-    return result;
 }
 
 
-big_integer big_integer::from_bits() const {
-    big_integer result(*this);
+void big_integer::from_bits() {
     if (sign) {
-        for (uint32_t &i : result.number) {
+        sign = false;
+        for (uint32_t& i : number) {
             i = ~i;
         }
-        result--;
+        operator++();
+        sign = true;
     }
-    return result;
 }
 
-
-big_integer operator&(big_integer a, big_integer const &b) {
-    a = a.to_bits();
-    big_integer new_b = b.to_bits();
+big_integer bit_operation(big_integer a, big_integer b, const std::function<uint32_t(uint32_t, uint32_t)>& func) {
+    a.to_bits();
+    b.to_bits();
     uint32_t a_element = (a.sign || a.number.empty()) ? UINT32_MAX : 0;
-    uint32_t b_element = (new_b.sign || new_b.number.empty()) ? UINT32_MAX : 0;
-    while (a.number.size() < new_b.number.size()) {
+    uint32_t b_element = (b.sign || b.number.empty()) ? UINT32_MAX : 0;
+    while (a.number.size() < b.number.size()) {
         a.number.push_back(a_element);
     }
-    while (a.number.size() > new_b.number.size()) {
-        new_b.number.push_back(b_element);
+    while (a.number.size() > b.number.size()) {
+        b.number.push_back(b_element);
     }
     for (size_t i = 0; i < a.number.size(); i++) {
-        a.number[i] &= new_b.number[i];
+        a.number[i] = func(a.number[i], b.number[i]);
     }
     a.normalize();
-    a.sign &= b.sign;
-    if (a.sign)
-        return a.from_bits();
+    a.sign = func(a.sign, b.sign);
+    if (a.sign) {
+        a.from_bits();
+    }
     return a;
 }
 
-big_integer operator|(big_integer a, big_integer const &b) {
-    a = a.to_bits();
-    big_integer new_b = b.to_bits();
-    uint32_t a_element = (a.sign || a.number.empty()) ? UINT32_MAX : 0;
-    uint32_t b_element = (new_b.sign || new_b.number.empty()) ? UINT32_MAX : 0;
-    while (a.number.size() < new_b.number.size()) {
-        a.number.push_back(a_element);
-    }
-    while (a.number.size() > new_b.number.size()) {
-        new_b.number.push_back(b_element);
-    }
-    for (size_t i = 0; i < a.number.size(); i++) {
-        a.number[i] |= new_b.number[i];
-    }
-    a.normalize();
-    a.sign |= b.sign;
-    if (a.sign)
-        return a.from_bits();
-    return a;
+big_integer operator&(const big_integer& a, big_integer const& b) {
+    return bit_operation(a, b, [](uint32_t a, uint32_t b) { return a & b; });
 }
 
-big_integer operator^(big_integer a, big_integer const &b) {
-    a = a.to_bits();
-    big_integer new_b = b.to_bits();
-    uint32_t a_element = (a.sign || a.number.empty()) ? UINT32_MAX : 0;
-    uint32_t b_element = (new_b.sign || new_b.number.empty()) ? UINT32_MAX : 0;
-    while (a.number.size() < new_b.number.size()) {
-        a.number.push_back(a_element);
-    }
-    while (a.number.size() > new_b.number.size()) {
-        new_b.number.push_back(b_element);
-    }
-    for (size_t i = 0; i < a.number.size(); i++) {
-        a.number[i] ^= new_b.number[i];
-    }
-    a.normalize();
-    a.sign ^= b.sign;
-    if (a.sign)
-        return a.from_bits();
-    return a;
+big_integer operator|(const big_integer& a, big_integer const& b) {
+    return bit_operation(a, b, [](uint32_t a, uint32_t b) { return a | b; });
+}
+
+big_integer operator^(const big_integer& a, big_integer const& b) {
+    return bit_operation(a, b, [](uint32_t a, uint32_t b) { return a ^ b; });
 }
 
 big_integer operator<<(big_integer a, unsigned int b) {
