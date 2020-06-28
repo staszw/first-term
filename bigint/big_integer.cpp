@@ -1,15 +1,15 @@
 #include "big_integer.h"
 
 static uint32_t get_32_low_bits(uint64_t a) {
-    return a & UINT32_MAX;
+    return static_cast<uint32_t>(a & UINT32_MAX);
 }
 
 static uint32_t get_32_high_bits(uint64_t a) {
-    return a >> big_integer::ELEMENT_LENGTH;
+    return static_cast<uint32_t>(a >> big_integer::ELEMENT_LENGTH);
 }
 
 static bool get_sign(uint64_t a) {
-    return a >> (2 * big_integer::ELEMENT_LENGTH - 1);
+    return a >> 63u;
 }
 
 static uint64_t shift_from_low(uint32_t a) {
@@ -31,7 +31,7 @@ big_integer::big_integer(big_integer const& other) = default;
 
 big_integer::big_integer(int a) : number(), sign(a < 0) {
     if (a == INT32_MIN) {
-        set_nth(0, 1u<<(ELEMENT_LENGTH - 1));
+        set_nth(0, 0x80000000);
     } else if (a != 0) {
         set_nth(0, abs(a));
     }
@@ -146,7 +146,7 @@ big_integer operator+(big_integer a, big_integer const& b) {
         return b - (-a);
     }
     uint32_t carry = 0;
-    for (size_t i = 0; i < std::max(a.number.size(), b.number.size()); i++) {
+    for (size_t i = 0; i < a.number.size() || i < b.number.size(); i++) {
         uint64_t x = a.get_nth(i);
         uint64_t y = b.get_nth(i);
         uint64_t sum = x + y + carry;
@@ -172,7 +172,7 @@ big_integer operator-(big_integer a, big_integer const& b) {
     }
 
     uint32_t carry = 0;
-    for (size_t i = 0; i < std::max(a.number.size(), b.number.size()); i++) {
+    for (size_t i = 0; i < a.number.size() || i < b.number.size(); i++) {
         uint64_t x = a.get_nth(i);
         uint32_t y = b.get_nth(i);
         uint64_t diff = x - y - carry;
