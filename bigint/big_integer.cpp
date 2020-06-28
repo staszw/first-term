@@ -202,21 +202,16 @@ big_integer operator*(big_integer a, big_integer const& b) {
     return result;
 }
 
-big_integer operator/(big_integer a, uint32_t b) {
+big_integer big_integer::div_by_uint(uint32_t b) {
     uint32_t carry = 0;
-    for (ptrdiff_t i = a.number.size() - 1; i >= 0; i--) {
-        uint64_t tmp = shift_from_low(carry) + a.number[i];
-        a.number[i] = get_32_low_bits(tmp / b);
+    for (ptrdiff_t i = number.size() - 1; i >= 0; i--) {
+        uint64_t tmp = shift_from_low(carry) + number[i];
+        number[i] = get_32_low_bits(tmp / b);
         carry = tmp % b;
     }
-    a.normalize();
-    return a;
+    normalize();
+    return *this;
 }
-
-big_integer operator/(big_integer a, int b) {
-    return a / big_integer(b);
-}
-
 
 big_integer operator/(big_integer a, big_integer const& b) {
     if (a.sign != b.sign) {
@@ -225,9 +220,9 @@ big_integer operator/(big_integer a, big_integer const& b) {
         return 0;
     } else if (b.number.size() == 1) {
         if (a.sign) {
-            return (-a) / b.number[0];
+            return (-a).div_by_uint(b.number[0]);
         } else {
-            return a / b.number[0];
+            return a.div_by_uint(b.number[0]);
         }
     }
     uint32_t f = static_cast<uint32_t>(shift_from_low(1) / (static_cast<uint64_t> (b.number.back() + 1)));
