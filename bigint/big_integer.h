@@ -65,10 +65,6 @@ struct big_integer {
 
     friend big_integer operator*(big_integer a, big_integer const& b);
 
-    friend big_integer operator/(big_integer a, uint32_t b);
-
-    friend big_integer operator/(big_integer a, int b);
-
     friend big_integer operator/(big_integer a, big_integer const& b);
 
     friend big_integer operator%(big_integer const& a, big_integer const& b);
@@ -82,7 +78,6 @@ struct big_integer {
     friend big_integer operator<<(big_integer a, unsigned int b);
 
     friend big_integer operator>>(big_integer a, unsigned int b);
-
 
     friend std::string to_string(big_integer const& a);
 
@@ -104,7 +99,10 @@ private:
     void set_nth(size_t i, uint32_t value);
 
     std::vector<uint32_t> number;
+
     bool sign;
+
+    big_integer div_by_uint(uint32_t b);
 };
 
 
@@ -113,10 +111,6 @@ big_integer operator+(big_integer a, big_integer const& b);
 big_integer operator-(big_integer a, big_integer const& b);
 
 big_integer operator*(big_integer a, big_integer const& b);
-
-big_integer operator/(big_integer a, uint32_t b);
-
-big_integer operator/(big_integer a, int b);
 
 big_integer operator/(big_integer a, big_integer const& b);
 
