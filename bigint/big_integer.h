@@ -7,8 +7,10 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <algorithm>
 
 struct big_integer {
+    using func = std::function<uint32_t(uint32_t, uint32_t)>;
     big_integer();
 
     big_integer(big_integer const& other);
@@ -87,8 +89,9 @@ struct big_integer {
     friend int8_t compare(big_integer const& a, big_integer const& b);
 
     friend big_integer
-    bit_operation(big_integer a, big_integer b, const std::function<uint32_t(uint32_t, uint32_t)>& func);
+    bit_operation(big_integer a, big_integer b, const func& func);
 
+    static const uint32_t ELEMENT_LENGTH = 32;
 private:
     void to_bits();
 
@@ -96,9 +99,12 @@ private:
 
     void normalize();
 
+    uint32_t get_nth(size_t i) const;
+
+    void set_nth(size_t i, uint32_t value);
+
     std::vector<uint32_t> number;
-    bool sign{};
-    static const uint32_t element_length = 32;
+    bool sign;
 };
 
 
