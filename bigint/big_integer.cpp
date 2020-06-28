@@ -23,7 +23,7 @@ void big_integer::normalize() {
 
 big_integer::big_integer() : number(), sign(false) {}
 
-big_integer::big_integer(big_integer const &other) = default;
+big_integer::big_integer(big_integer const& other) = default;
 
 big_integer::big_integer(int a) : number(), sign(a < 0) {
     if (a == INT32_MIN) {
@@ -39,7 +39,7 @@ big_integer::big_integer(unsigned a) : number(), sign(false) {
     }
 }
 
-big_integer::big_integer(std::string const &str) : big_integer() {
+big_integer::big_integer(std::string const& str) : big_integer() {
     if (str.empty()) {
         return;
     }
@@ -53,47 +53,47 @@ big_integer::big_integer(std::string const &str) : big_integer() {
 
 big_integer::~big_integer() = default;
 
-big_integer &big_integer::operator=(big_integer const &other) = default;
+big_integer& big_integer::operator=(big_integer const& other) = default;
 
-big_integer &big_integer::operator+=(big_integer const &rhs) {
+big_integer& big_integer::operator+=(big_integer const& rhs) {
     return operator=(*this + rhs);
 }
 
-big_integer &big_integer::operator-=(big_integer const &rhs) {
+big_integer& big_integer::operator-=(big_integer const& rhs) {
     return operator=(*this - rhs);
 }
 
-big_integer &big_integer::operator*=(big_integer const &rhs) {
+big_integer& big_integer::operator*=(big_integer const& rhs) {
     return operator=(*this * rhs);
 }
 
-big_integer &big_integer::operator/=(big_integer const &rhs) {
+big_integer& big_integer::operator/=(big_integer const& rhs) {
     return operator=(*this / rhs);
 }
 
-big_integer &big_integer::operator%=(big_integer const &rhs) {
+big_integer& big_integer::operator%=(big_integer const& rhs) {
     return operator=(*this % rhs);
 }
 
-big_integer &big_integer::operator&=(big_integer const &rhs) {
+big_integer& big_integer::operator&=(big_integer const& rhs) {
     return operator=(*this & rhs);
 }
 
-big_integer &big_integer::operator|=(big_integer const &rhs) {
+big_integer& big_integer::operator|=(big_integer const& rhs) {
     return operator=(*this | rhs);
 
 }
 
-big_integer &big_integer::operator^=(big_integer const &rhs) {
+big_integer& big_integer::operator^=(big_integer const& rhs) {
     return operator=(*this ^ rhs);
 
 }
 
-big_integer &big_integer::operator<<=(int rhs) {
+big_integer& big_integer::operator<<=(int rhs) {
     return operator=(*this << rhs);
 }
 
-big_integer &big_integer::operator>>=(int rhs) {
+big_integer& big_integer::operator>>=(int rhs) {
     return operator=(*this >> rhs);
 }
 
@@ -113,7 +113,7 @@ big_integer big_integer::operator~() const {
     return -(*this + 1);
 }
 
-big_integer &big_integer::operator++() {
+big_integer& big_integer::operator++() {
     return *this += 1;
 }
 
@@ -123,7 +123,7 @@ big_integer big_integer::operator++(int) {
     return r;
 }
 
-big_integer &big_integer::operator--() {
+big_integer& big_integer::operator--() {
     return *this -= 1;
 }
 
@@ -133,7 +133,7 @@ big_integer big_integer::operator--(int) {
     return r;
 }
 
-big_integer operator+(big_integer a, big_integer const &b) {
+big_integer operator+(big_integer a, big_integer const& b) {
     if (a.sign && b.sign) {
         return -(-a + (-b));
     } else if (!a.sign && b.sign) {
@@ -160,7 +160,7 @@ big_integer operator+(big_integer a, big_integer const &b) {
     return a;
 }
 
-big_integer operator-(big_integer a, big_integer const &b) {
+big_integer operator-(big_integer a, big_integer const& b) {
     if (a.sign && b.sign) {
         return (-b) - (-a);
     } else if (a.sign && !b.sign) {
@@ -189,7 +189,7 @@ big_integer operator-(big_integer a, big_integer const &b) {
     return a;
 }
 
-big_integer operator*(big_integer a, big_integer const &b) {
+big_integer operator*(big_integer a, big_integer const& b) {
     if (a.sign != b.sign) {
         return -(-a * b);
     }
@@ -232,7 +232,7 @@ big_integer operator/(big_integer a, int b) {
 }
 
 
-big_integer operator/(big_integer a, big_integer const &b) {
+big_integer operator/(big_integer a, big_integer const& b) {
     if (a.sign != b.sign) {
         return -((-a) / b);
     } else if (a.number.size() < b.number.size()) {
@@ -280,7 +280,7 @@ big_integer operator/(big_integer a, big_integer const &b) {
     return result;
 }
 
-big_integer operator%(const big_integer &a, big_integer const &b) {
+big_integer operator%(const big_integer& a, big_integer const& b) {
     return a - (a / b) * b;
 }
 
@@ -345,7 +345,7 @@ big_integer operator<<(big_integer a, unsigned int b) {
     ptrdiff_t zeros = static_cast<ptrdiff_t>(b) >> 5u;
     uint32_t shift = static_cast<size_t>(b) & 31u;
     uint32_t carry = 0;
-    for (uint32_t &i : a.number) {
+    for (uint32_t& i : a.number) {
         uint64_t tmp = (static_cast<uint64_t>( i) << shift);
         tmp |= carry;
         i = static_cast<uint32_t>(tmp);
@@ -384,7 +384,7 @@ big_integer operator>>(big_integer a, unsigned int b) {
     return a;
 }
 
-int8_t compare(const big_integer &a, const big_integer &b) {
+int8_t compare(const big_integer& a, const big_integer& b) {
     if (a.sign && !b.sign) {
         return -1;
     } else if (!a.sign && b.sign) {
@@ -412,31 +412,31 @@ int8_t compare(const big_integer &a, const big_integer &b) {
     return result;
 }
 
-bool operator==(big_integer const &a, big_integer const &b) {
+bool operator==(big_integer const& a, big_integer const& b) {
     return compare(a, b) == 0;
 }
 
-bool operator!=(big_integer const &a, big_integer const &b) {
+bool operator!=(big_integer const& a, big_integer const& b) {
     return compare(a, b) != 0;
 }
 
-bool operator<(big_integer const &a, big_integer const &b) {
+bool operator<(big_integer const& a, big_integer const& b) {
     return compare(a, b) < 0;
 }
 
-bool operator>(big_integer const &a, big_integer const &b) {
+bool operator>(big_integer const& a, big_integer const& b) {
     return compare(a, b) > 0;
 }
 
-bool operator<=(big_integer const &a, big_integer const &b) {
+bool operator<=(big_integer const& a, big_integer const& b) {
     return compare(a, b) <= 0;
 }
 
-bool operator>=(big_integer const &a, big_integer const &b) {
+bool operator>=(big_integer const& a, big_integer const& b) {
     return compare(a, b) >= 0;
 }
 
-std::string to_string(big_integer const &a) {
+std::string to_string(big_integer const& a) {
     if (a == 0) {
         return "0";
     }
@@ -457,6 +457,6 @@ std::string to_string(big_integer const &a) {
     return result;
 }
 
-std::ostream &operator<<(std::ostream &s, big_integer const &a) {
+std::ostream& operator<<(std::ostream& s, big_integer const& a) {
     return s << to_string(a);
 }
