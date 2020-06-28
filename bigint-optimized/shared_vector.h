@@ -18,7 +18,7 @@ struct shared_vector {
         if (inner != other.inner) {
             inner->copies--;
             if (inner->copies == 0) {
-                inner->~inner_vector();
+                delete inner;
             }
             inner = other.inner;
             inner->copies++;
@@ -29,7 +29,7 @@ struct shared_vector {
     ~shared_vector() {
         inner->copies--;
         if (inner->copies == 0) {
-            inner->~inner_vector();
+            delete inner;
         }
     }
 
