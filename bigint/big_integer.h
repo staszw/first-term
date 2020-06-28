@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <functional>
 
 struct big_integer
 {
@@ -44,42 +45,44 @@ struct big_integer
     friend big_integer operator+(big_integer a, big_integer const& b);
     friend big_integer operator-(big_integer a, big_integer const& b);
     friend big_integer operator*(big_integer a, big_integer const& b);
-    friend big_integer operator/(big_integer a, uint32_t const& b);
-    friend big_integer operator/(big_integer a, int const& b);
+    friend big_integer operator/(big_integer a, uint32_t b);
+    friend big_integer operator/(big_integer a, int b);
     friend big_integer operator/(big_integer a, big_integer const& b);
-    friend big_integer operator%(const big_integer& a, big_integer const& b);
+    friend big_integer operator%(big_integer const& a, big_integer const& b);
 
-    friend big_integer operator&(big_integer a, big_integer const& b);
-    friend big_integer operator|(big_integer a, big_integer const& b);
-    friend big_integer operator^(big_integer a, big_integer const& b);
+    friend big_integer operator&(big_integer const& a, big_integer const& b);
+    friend big_integer operator|(big_integer const& a, big_integer const& b);
+    friend big_integer operator^(big_integer const& a, big_integer const& b);
 
     friend big_integer operator<<(big_integer a, unsigned int b);
     friend big_integer operator>>(big_integer a, unsigned int b);
 
 
     friend std::string to_string(big_integer const& a);
-    friend int8_t compare(big_integer const& a, big_integer const& b);
 
+    friend int8_t compare(big_integer const& a, big_integer const& b);
+    friend big_integer bit_operation(big_integer a, big_integer b, const std::function<uint32_t (uint32_t, uint32_t)>& func);
 
 private:
-    big_integer to_bits() const;
-    big_integer from_bits() const;
+    void to_bits();
+    void from_bits();
     void normalize();
     std::vector<uint32_t> number;
     bool sign{};
 };
 
+
 big_integer operator+(big_integer a, big_integer const& b);
 big_integer operator-(big_integer a, big_integer const& b);
 big_integer operator*(big_integer a, big_integer const& b);
-big_integer operator/(big_integer a, uint32_t const& b);
-big_integer operator/(big_integer a, int const& b);
+big_integer operator/(big_integer a, uint32_t b);
+big_integer operator/(big_integer a, int b);
 big_integer operator/(big_integer a, big_integer const& b);
 big_integer operator%(const big_integer& a, big_integer const& b);
 
-big_integer operator&(big_integer a, big_integer const& b);
-big_integer operator|(big_integer a, big_integer const& b);
-big_integer operator^(big_integer a, big_integer const& b);
+big_integer operator&(const big_integer& a, big_integer const& b);
+big_integer operator|(const big_integer& a, big_integer const& b);
+big_integer operator^(const big_integer& a, big_integer const& b);
 
 big_integer operator<<(big_integer a, unsigned int b);
 big_integer operator>>(big_integer a, unsigned int b);
@@ -95,5 +98,6 @@ bool operator>=(big_integer const& a, big_integer const& b);
 
 std::string to_string(big_integer const& a);
 std::ostream& operator<<(std::ostream& s, big_integer const& a);
+big_integer bit_operation(big_integer a, big_integer b, const std::function<uint32_t (uint32_t, uint32_t)>& func);
 
 #endif // BIG_INTEGER_H
