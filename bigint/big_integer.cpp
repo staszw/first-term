@@ -1,16 +1,20 @@
 #include "big_integer.h"
 
-#include <stdexcept>
-#include <algorithm>
-#include <cstddef>
-#include <iosfwd>
-#include <cstdint>
-#include <vector>
-#include <string>
-#include <algorithm>
-#include <ostream>
-#include <functional>
+static uint32_t get_32_low_bits(uint64_t a) {
+    return a & UINT32_MAX;
+}
 
+static uint32_t get_32_high_bits(uint64_t a) {
+    return a >> big_integer::ELEMENT_LENGTH;
+}
+
+static bool get_sign(uint64_t a) {
+    return a >> (2 * big_integer::ELEMENT_LENGTH - 1);
+}
+
+static uint64_t shift_from_low(uint32_t a) {
+    return static_cast<uint64_t>(a) << big_integer::ELEMENT_LENGTH;
+}
 
 void big_integer::normalize() {
     while (!number.empty() && number.back() == 0) {
@@ -27,15 +31,15 @@ big_integer::big_integer(big_integer const& other) = default;
 
 big_integer::big_integer(int a) : number(), sign(a < 0) {
     if (a == INT32_MIN) {
-        number.push_back(static_cast<uint32_t>(a));
+        set_nth(0, 1u<<(ELEMENT_LENGTH - 1));
     } else if (a != 0) {
-        number.push_back(abs(a));
+        set_nth(0, abs(a));
     }
 }
 
 big_integer::big_integer(unsigned a) : number(), sign(false) {
     if (a != 0) {
-        number.push_back(a);
+        set_nth(0, a);
     }
 }
 
@@ -143,16 +147,12 @@ big_integer operator+(big_integer a, big_integer const& b) {
     }
     uint32_t carry = 0;
     for (size_t i = 0; i < std::max(a.number.size(), b.number.size()); i++) {
-        uint64_t x = a.number.size() > i ? a.number[i] : 0;
-        uint64_t y = b.number.size() > i ? b.number[i] : 0;
+        uint64_t x = a.get_nth(i);
+        uint64_t y = b.get_nth(i);
         uint64_t sum = x + y + carry;
-        uint32_t result = static_cast<uint32_t>(sum);
-        carry = sum >> a.element_length;
-        if (a.number.size() > i) {
-            a.number[i] = result;
-        } else {
-            a.number.push_back(result);
-        }
+        uint32_t result = get_32_low_bits(sum);
+        carry = get_32_high_bits(sum);
+        a.set_nth(i, result);
     }
     if (carry > 0) {
         a.number.push_back(carry);
@@ -172,18 +172,12 @@ big_integer operator-(big_integer a, big_integer const& b) {
     }
 
     uint32_t carry = 0;
-    for (size_t i = 0; i < b.number.size(); i++) {
-        uint64_t x = a.number[i];
-        uint32_t y = b.number[i];
+    for (size_t i = 0; i < std::max(a.number.size(), b.number.size()); i++) {
+        uint64_t x = a.get_nth(i);
+        uint32_t y = b.get_nth(i);
         uint64_t diff = x - y - carry;
-        a.number[i] = static_cast<uint32_t>(diff);
-        carry = diff >> 63u;
-    }
-    for (size_t i = b.number.size(); i < a.number.size() && carry > 0; i++) {
-        uint64_t x = a.number[i];
-        uint64_t diff = x - carry;
-        a.number[i] = static_cast<uint32_t>(diff);
-        carry = diff >> 63u;
+        a.set_nth(i, get_32_low_bits(diff));
+        carry = get_sign(diff);
     }
     a.normalize();
     return a;
@@ -194,22 +188,14 @@ big_integer operator*(big_integer a, big_integer const& b) {
         return -(-a * b);
     }
     big_integer result;
-    result.number.resize(a.number.size() + b.number.size());
     for (size_t i = 0; i < a.number.size(); i++) {
         uint32_t carry = 0;
         uint64_t x = a.number[i];
-        size_t j = 0;
-        for (; j < b.number.size(); j++) {
-            uint64_t y = b.number[j];
-            uint64_t mul = result.number[i + j] + x * y + carry;
-            result.number[i + j] = static_cast<uint32_t>(mul);
-            carry = mul >> b.element_length;
-        }
-        while (carry > 0) {
-            uint64_t mul = result.number[i + j] + carry;
-            result.number[i + j] = static_cast<uint32_t>(mul);
-            j++;
-            carry = mul >> b.element_length;
+        for (size_t j = 0; j < b.number.size() || carry > 0; j++) {
+            uint64_t y = j < b.number.size() ? b.number[j] : 0;
+            uint64_t mul = result.get_nth(i + j) + x * y + carry;
+            result.set_nth(i + j, get_32_low_bits(mul));
+            carry = get_32_high_bits(mul);
         }
     }
     result.normalize();
@@ -219,8 +205,8 @@ big_integer operator*(big_integer a, big_integer const& b) {
 big_integer operator/(big_integer a, uint32_t b) {
     uint32_t carry = 0;
     for (ptrdiff_t i = a.number.size() - 1; i >= 0; i--) {
-        uint64_t tmp = (static_cast<uint64_t>(carry) << a.element_length) + a.number[i];
-        a.number[i] = static_cast<uint32_t>(tmp / b);
+        uint64_t tmp = shift_from_low(carry) + a.number[i];
+        a.number[i] = get_32_low_bits(tmp / b);
         carry = tmp % b;
     }
     a.normalize();
@@ -244,7 +230,7 @@ big_integer operator/(big_integer a, big_integer const& b) {
             return a / b.number[0];
         }
     }
-    uint32_t f = static_cast<uint32_t>((1ull << b.element_length) / (static_cast<uint64_t> (b.number.back() + 1)));
+    uint32_t f = static_cast<uint32_t>(shift_from_low(1) / (static_cast<uint64_t> (b.number.back() + 1)));
     big_integer norm_a = a * f;
     big_integer norm_b = b * f;
     if (a.sign) {
@@ -260,11 +246,11 @@ big_integer operator/(big_integer a, big_integer const& b) {
         norm_a -= (norm_b << 32 * m);
     }
     for (ptrdiff_t i = m - 1; i >= 0; i--) {
-        uint64_t x = n + i < norm_a.number.size() ? norm_a.number[n + i] : 0;
-        uint64_t y = n + i - 1 < norm_a.number.size() ? norm_a.number[n + i - 1] : 0;
-        uint64_t q64 = ((x << norm_b.element_length) + y) / norm_b.number[n - 1];
+        uint64_t x = norm_a.get_nth(n + i);
+        uint64_t y = norm_a.get_nth(n + i - 1);
+        uint64_t q64 = (shift_from_low(x) + y) / norm_b.number[n - 1];
         uint32_t q = UINT32_MAX;
-        if (q64 < q) q = static_cast<uint32_t>(q64);
+        if (q64 < q) q = get_32_low_bits(q64);
         big_integer big_q(q);
         norm_a -= ((big_q * norm_b) << (32 * i));
         while (norm_a < 0) {
@@ -307,19 +293,11 @@ void big_integer::from_bits() {
     }
 }
 
-big_integer bit_operation(big_integer a, big_integer b, const std::function<uint32_t(uint32_t, uint32_t)>& func) {
+big_integer bit_operation(big_integer a, big_integer b, const big_integer::func& func) {
     a.to_bits();
     b.to_bits();
-    uint32_t a_element = (a.sign || a.number.empty()) ? UINT32_MAX : 0;
-    uint32_t b_element = (b.sign || b.number.empty()) ? UINT32_MAX : 0;
-    while (a.number.size() < b.number.size()) {
-        a.number.push_back(a_element);
-    }
-    while (a.number.size() > b.number.size()) {
-        b.number.push_back(b_element);
-    }
     for (size_t i = 0; i < a.number.size(); i++) {
-        a.number[i] = func(a.number[i], b.number[i]);
+        a.set_nth(i, func(a.get_nth(i), b.get_nth(i)));
     }
     a.normalize();
     a.sign = func(a.sign, b.sign);
@@ -348,8 +326,8 @@ big_integer operator<<(big_integer a, unsigned int b) {
     for (uint32_t& i : a.number) {
         uint64_t tmp = (static_cast<uint64_t>( i) << shift);
         tmp |= carry;
-        i = static_cast<uint32_t>(tmp);
-        carry = (tmp >> a.element_length);
+        i = get_32_low_bits(tmp);
+        carry = get_32_high_bits(tmp);
     }
     if (carry > 0) {
         a.number.push_back(carry);
@@ -375,8 +353,8 @@ big_integer operator>>(big_integer a, unsigned int b) {
         a.number.pop_back();
     for (ptrdiff_t i = a.number.size() - 1; i >= 0; i--) {
         uint64_t tmp = (static_cast<uint64_t>(a.number[i]) << (32 - shift));
-        a.number[i] = ((tmp >> a.element_length) | carry);
-        carry = static_cast<uint32_t>(tmp);
+        a.number[i] = (get_32_high_bits(tmp) | carry);
+        carry = get_32_low_bits(tmp);
     }
     a.normalize();
     if (a.sign)
@@ -445,7 +423,7 @@ std::string to_string(big_integer const& a) {
     while (temp != 0) {
         uint64_t digit = 0;
         for (ptrdiff_t i = temp.number.size() - 1; i >= 0; i--) {
-            digit = ((digit << temp.element_length) + temp.number[i]) % 10;
+            digit = (shift_from_low(digit) + temp.number[i]) % 10;
         }
         result += std::to_string(digit);
         temp = temp / 10;
@@ -455,6 +433,21 @@ std::string to_string(big_integer const& a) {
     }
     std::reverse(result.begin(), result.end());
     return result;
+}
+
+uint32_t big_integer::get_nth(size_t i) const {
+    if (i < number.size()) {
+        return number[i];
+    }
+    return sign ? UINT32_MAX : 0;
+}
+
+void big_integer::set_nth(size_t i, uint32_t value) {
+    if (i < number.size()) {
+        number[i] = value;
+    } else {
+        number.push_back(value);
+    }
 }
 
 std::ostream& operator<<(std::ostream& s, big_integer const& a) {
