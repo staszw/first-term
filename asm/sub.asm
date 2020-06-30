@@ -26,22 +26,20 @@ _start:
 ; result:
 ;    written to rdi
 sub_long_long:
-                push            rdi
                 push            rsi
                 push            rcx
 
                 clc
 .loop:
-                mov             rax, [rsi]
-                lea             rsi, [rsi + 8]
-                sbb             [rdi], rax
+                mov             rax, [rdi]
                 lea             rdi, [rdi + 8]
+                sbb             [rsi], rax
+                lea             rsi, [rsi + 8]
                 dec             rcx
                 jnz             .loop
 
                 pop             rcx
                 pop             rsi
-                pop             rdi
                 ret
                 
 
