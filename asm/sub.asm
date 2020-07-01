@@ -12,6 +12,8 @@ _start:
                 lea             rsi, [rsp + 128 * 8]
                 call            sub_long_long
 
+		mov		rdi, rsi
+
                 call            write_long
 
                 mov             al, 0x0a
@@ -24,8 +26,9 @@ _start:
 ;    rsi -- address of operand #2 (long number)
 ;    rcx -- length of long numbers in qwords
 ; result:
-;    written to rdi
+;    written to rsi
 sub_long_long:
+		push 		rdi
                 push            rsi
                 push            rcx
 
@@ -40,6 +43,7 @@ sub_long_long:
 
                 pop             rcx
                 pop             rsi
+		pop 		rdi
                 ret
                 
 
