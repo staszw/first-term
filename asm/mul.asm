@@ -15,6 +15,7 @@ _start:
                 lea             r10, [rsp + 3 * 128 * 8] ; address of second operand
                 call            mul_long_long
                 
+		mov		rdi, r8
                 mov             rcx, 2 * 128
                 call            write_long
 
@@ -32,14 +33,15 @@ _start:
 ; result:
 ;    written to r8
 mul_long_long:
-                 push            rdx
-                 push            rcx
-                 push            r11
-                 push            r12
-                 push            r13
-                 push            rax
-                 push            rbx
-                 push            r14
+                push            rdi
+                push            rdx
+                push            rcx
+                push            r11
+                push            r12
+                push            r13
+                push            rax
+                push            rbx
+                push            r14
                 
                 mov             rdi, r8
                 add             rcx, rcx
@@ -89,6 +91,7 @@ mul_long_long:
                 pop             r11
                 pop             rcx
                 pop             rdx
+                pop             rdi
                 ret
                 
 
