@@ -44,9 +44,9 @@ mul_long_long:
                 push            r14
                 
                 mov             rdi, r8
-                add             rcx, rcx
+                add             rcx, rcx ; rcx = size * 2
                 call            set_zero
-                lea             rcx, [rcx * 4]
+                lea             rcx, [rcx * 4] ; rcx *= 4 => rcx = size * 8
 
                 clc
                 xor             r12, r12 ; i
@@ -94,35 +94,6 @@ mul_long_long:
                 pop             rdi
                 ret
                 
-
-                
-           
-           
-           
-; subtracts two long number
-;    rdi -- address of operand #1 (long number)
-;    rsi -- address of operand #2 (long number)
-;    rcx -- length of long numbers in qwords
-; result:
-;    written to rdi
-sub_long_long:
-                push            rdi
-                push            rsi
-                push            rcx
-
-                clc
-.loop:
-                mov             rax, [rsi]
-                lea             rsi, [rsi + 8]
-                sbb             [rdi], rax
-                lea             rdi, [rdi + 8]
-                dec             rcx
-                jnz             .loop
-
-                pop             rcx
-                pop             rsi
-                pop             rdi
-                ret
                 
 ; adds two long number
 ;    rdi -- address of summand #1 (long number)

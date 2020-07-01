@@ -22,8 +22,8 @@ _start:
                 jmp             exit
                 
 ; subtracts two long number
-;    rdi -- address of operand #1 (long number)
-;    rsi -- address of operand #2 (long number)
+;    rdi -- address of subtrahend (long number)
+;    rsi -- address of minuend (long number)
 ;    rcx -- length of long numbers in qwords
 ; result:
 ;    written to rsi
