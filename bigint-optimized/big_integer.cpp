@@ -49,8 +49,7 @@ big_integer::big_integer(std::string const& str) : big_integer() {
     }
     bool csign = str[0] == '-';
     for (size_t i = csign; i < str.size(); i++) {
-        *this *= 10;
-        *this += str[i] - '0';
+        operator=((*this) * 10 + (str[i] - '0'));
     }
     sign = (*this != 0 && csign);
 }
@@ -60,15 +59,68 @@ big_integer::~big_integer() = default;
 big_integer& big_integer::operator=(big_integer const& other) = default;
 
 big_integer& big_integer::operator+=(big_integer const& rhs) {
-    return operator=(*this + rhs);
+    if (sign && rhs.sign) {
+        return *this = -((- *this) += -rhs);
+    } else if (!sign && rhs.sign) {
+        return operator-=(-rhs);
+    } else if (sign && !rhs.sign) {
+        return *this = rhs - -(*this);
+    }
+    uint32_t carry = 0;
+    for (size_t i = 0; i < number.size() || i < rhs.number.size(); i++) {
+        uint64_t x = get_nth(i);
+        uint64_t y = rhs.get_nth(i);
+        uint64_t sum = x + y + carry;
+        uint32_t result = get_32_low_bits(sum);
+        carry = get_32_high_bits(sum);
+        set_nth(i, result);
+    }
+    if (carry > 0) {
+        number.push_back(carry);
+    }
+    return *this;
 }
 
 big_integer& big_integer::operator-=(big_integer const& rhs) {
-    return operator=(*this - rhs);
+    if (sign && rhs.sign) {
+        return *this = (-rhs) - -(*this);
+    } else if (sign && !rhs.sign) {
+        return *this = -(-(*this) += rhs);
+    } else if (!sign && rhs.sign) {
+        return operator+=(-rhs);
+    } else if (*this < rhs) {
+        return *this = -(rhs - *this);
+    }
+
+    uint32_t carry = 0;
+    for (size_t i = 0; i < number.size() || i < rhs.number.size(); i++) {
+        uint64_t x = get_nth(i);
+        uint32_t y = rhs.get_nth(i);
+        uint64_t diff = x - y - carry;
+        set_nth(i, get_32_low_bits(diff));
+        carry = get_sign(diff);
+    }
+    normalize();
+    return *this;
 }
 
 big_integer& big_integer::operator*=(big_integer const& rhs) {
-    return operator=(*this * rhs);
+    if (sign != rhs.sign) {
+        return *this = -((*this) *= -rhs);
+    }
+    big_integer result;
+    for (size_t i = 0; i < number.size(); i++) {
+        uint32_t carry = 0;
+        uint64_t x = number[i];
+        for (size_t j = 0; j < rhs.number.size() || carry > 0; j++) {
+            uint64_t y = j < rhs.number.size() ? rhs.number[j] : 0;
+            uint64_t mul = result.get_nth(i + j) + x * y + carry;
+            result.set_nth(i + j, get_32_low_bits(mul));
+            carry = get_32_high_bits(mul);
+        }
+    }
+    result.normalize();
+    return *this = result;
 }
 
 big_integer& big_integer::operator/=(big_integer const& rhs) {
@@ -138,67 +190,17 @@ big_integer big_integer::operator--(int) {
 }
 
 big_integer operator+(big_integer a, big_integer const& b) {
-    if (a.sign && b.sign) {
-        return -(-a + (-b));
-    } else if (!a.sign && b.sign) {
-        return a - (-b);
-    } else if (a.sign && !b.sign) {
-        return b - (-a);
-    }
-    uint32_t carry = 0;
-    for (size_t i = 0; i < a.number.size() || i < b.number.size(); i++) {
-        uint64_t x = a.get_nth(i);
-        uint64_t y = b.get_nth(i);
-        uint64_t sum = x + y + carry;
-        uint32_t result = get_32_low_bits(sum);
-        carry = get_32_high_bits(sum);
-        a.set_nth(i, result);
-    }
-    if (carry > 0) {
-        a.number.push_back(carry);
-    }
-    return a;
+    big_integer result(a += b);
+    return result;
 }
 
 big_integer operator-(big_integer a, big_integer const& b) {
-    if (a.sign && b.sign) {
-        return (-b) - (-a);
-    } else if (a.sign && !b.sign) {
-        return -(-a + b);
-    } else if (!a.sign && b.sign) {
-        return a + (-b);
-    } else if (a < b) {
-        return -(b - a);
-    }
-
-    uint32_t carry = 0;
-    for (size_t i = 0; i < a.number.size() || i < b.number.size(); i++) {
-        uint64_t x = a.get_nth(i);
-        uint32_t y = b.get_nth(i);
-        uint64_t diff = x - y - carry;
-        a.set_nth(i, get_32_low_bits(diff));
-        carry = get_sign(diff);
-    }
-    a.normalize();
-    return a;
+    big_integer result(a -= b);
+    return result;
 }
 
 big_integer operator*(big_integer a, big_integer const& b) {
-    if (a.sign != b.sign) {
-        return -(-a * b);
-    }
-    big_integer result;
-    for (size_t i = 0; i < a.number.size(); i++) {
-        uint32_t carry = 0;
-        uint64_t x = a.number[i];
-        for (size_t j = 0; j < b.number.size() || carry > 0; j++) {
-            uint64_t y = j < b.number.size() ? b.number[j] : 0;
-            uint64_t mul = result.get_nth(i + j) + x * y + carry;
-            result.set_nth(i + j, get_32_low_bits(mul));
-            carry = get_32_high_bits(mul);
-        }
-    }
-    result.normalize();
+    big_integer result (a *= b);
     return result;
 }
 
@@ -291,7 +293,7 @@ void big_integer::from_bits() {
 big_integer bit_operation(big_integer a, big_integer b, const big_integer::func& func) {
     a.to_bits();
     b.to_bits();
-    for (size_t i = 0; i < a.number.size(); i++) {
+    for (size_t i = 0; i < a.number.size() || i < b.number.size(); i++) {
         a.set_nth(i, func(a.get_nth(i), b.get_nth(i)));
     }
     a.normalize();
