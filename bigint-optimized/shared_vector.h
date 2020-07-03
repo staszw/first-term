@@ -79,6 +79,14 @@ struct shared_vector {
         return begin() + size();
     }
 
+    const T* begin() const noexcept {
+        return inner->vect.data();
+    }
+
+    const T* end() const noexcept {
+        return begin() + size();
+    }
+
 private:
     struct inner_vector {
         std::vector<T> vect;
