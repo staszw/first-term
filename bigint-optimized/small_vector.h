@@ -6,14 +6,14 @@
 template<typename T>
 struct small_vector {
 
-    small_vector() noexcept: size_(0) {}
+    small_vector() noexcept: is_big(false), size_(0) {}
 
     small_vector(small_vector<T> const& other) :
-            size_(other.size_) {
+            is_big(other.is_big), size_(other.size_) {
         if (is_small()) {
-            std::copy(other.small, other.small + size_, small);
+            copy_small(other.small, small, size_);
         } else {
-            big = new shared_vector<T>(*other.big);
+            new (&big) shared_vector<T>(other.big);
         }
     }
 
@@ -26,8 +26,10 @@ struct small_vector {
     }
 
     ~small_vector() {
-        if (!is_small()) {
-            delete big;
+        if (is_small()) {
+            clear_small(small, size_);
+        } else {
+            big.~shared_vector();
         }
     }
 
@@ -35,7 +37,7 @@ struct small_vector {
         if (is_small()) {
             return small[i];
         } else {
-            return (*big)[i];
+            return big[i];
         }
     }
 
@@ -43,7 +45,7 @@ struct small_vector {
         if (is_small()) {
             return small[i];
         } else {
-            return (*big)[i];
+            return big[i];
         }
     }
 
@@ -55,31 +57,28 @@ struct small_vector {
         if (is_small()) {
             return small[size_ - 1];
         } else {
-            return big->back();
+            return big.back();
         }
     }
 
     void push_back(T const& value) {
-        if (size_ == MAX_SIZE) {
+        if (is_small() && size_ == MAX_SIZE) {
             from_small_to_big();
-            big->push_back(value);
-        } else if (size_ < MAX_SIZE) {
+            big.push_back(value);
+        } else if (is_small()) {
             small[size_] = value;
         } else {
-            big->push_back(value);
+            big.push_back(value);
         }
         size_++;
     }
 
     void pop_back() {
         size_--;
-        if (size_ == MAX_SIZE) {
-            big->pop_back();
-            from_big_to_small();
-        } else if (size_ < MAX_SIZE) {
+        if (is_small()) {
             small[size_].~T();
         } else {
-            big->pop_back();
+            big.pop_back();
         }
     }
 
@@ -88,12 +87,20 @@ struct small_vector {
     }
 
     void resize(size_t n) {
-        while (size_ < n && is_small()) {
-            push_back(T());
-        }
         if (size_ < n) {
-            big->resize(n);
-            size_ = n;
+            if (is_small() && n > MAX_SIZE) {
+                from_small_to_big();
+            }
+
+            if (is_small()) {
+                while (size_ < n) {
+                    new (small +  size_) T();
+                    size_++;
+                }
+            } else {
+                big.resize(n);
+                size_ = n;
+            }
         }
     }
 
@@ -101,7 +108,7 @@ struct small_vector {
         if (is_small()) {
             return small;
         } else {
-            return big->begin();
+            return big.begin();
         }
     }
 
@@ -113,7 +120,7 @@ struct small_vector {
         if (is_small()) {
             return small;
         } else {
-            return big->begin();
+            return big.begin();
         }
     }
 
@@ -122,39 +129,30 @@ struct small_vector {
     }
 
 private:
+    bool is_big;
     size_t size_;
-    static const size_t MAX_SIZE = sizeof(shared_vector<T>*) / sizeof(T);
+    static constexpr size_t MAX_SIZE = sizeof(shared_vector<T>) / sizeof(T);
     union {
-        shared_vector<T>* big;
+        shared_vector<T> big;
         T small[MAX_SIZE];
     };
 
     bool is_small() const noexcept {
-        return size_ <= MAX_SIZE;
+        return !is_big;
     }
 
     void from_small_to_big() {
         T safe[MAX_SIZE];
-        std::copy(small, small + MAX_SIZE, safe);
-        big = new shared_vector<T>();
-        big->resize(MAX_SIZE);
-        for (size_t i = 0; i < MAX_SIZE; i++) {
-            std::swap((*big)[i], safe[i]);
-        }
+        copy_small(small, safe, size_);
+        new (&big) shared_vector<T>(safe, safe + size_);
+        is_big = true;
     }
 
-    void from_big_to_small() {
-        shared_vector<T> safe(*big);
-        delete big;
-        for (size_t i = 0; i < MAX_SIZE; i++) {
-            small[i] = safe[i];
-        }
-    }
-
-    void swap_small_big(small_vector<T>& other) {
-        shared_vector<T>* safe = other.big;
-        std::copy(small, small + size_, other.small);
-        big = safe;
+    void swap_small_big_data(small_vector<T>& other) {
+        shared_vector<T> safe(other.big);
+        other.big.~shared_vector();
+        copy_small(small, other.small, size_);
+        new (&big) shared_vector<T>(safe);
     }
 
     void swap(small_vector<T>& other) {
@@ -163,11 +161,31 @@ private:
         } else if (!is_small() && !other.is_small()) {
             std::swap(big, other.big);
         } else if (is_small()) {
-            swap_small_big(other);
+            swap_small_big_data(other);
         } else {
-            other.swap_small_big(*this);
+            other.swap_small_big_data(*this);
         }
         std::swap(size_, other.size_);
+        std::swap(is_big, other.is_big);
+    }
+
+    void copy_small(T const* source, T* destination, size_t const& count) {
+        size_t done = 0;
+        try {
+            for (size_t i = 0; i < count; i++) {
+                new (destination + i) T(source[i]);
+                done++;
+            }
+        } catch (...) {
+            clear_small(destination, done);
+            throw;
+        }
+    }
+
+    void clear_small(T* where, size_t const& count) {
+        for (size_t i = 0; i < size_; i++) {
+            where[i].~T();
+        }
     }
 };
 
