@@ -14,12 +14,13 @@ struct shared_vector {
         inner->copies++;
     }
 
+    shared_vector(T* begin, T* end) {
+        inner = new inner_vector(std::vector<T>(begin, end));
+    }
+
     shared_vector& operator=(shared_vector const& other) {
         if (inner != other.inner) {
-            inner->copies--;
-            if (inner->copies == 0) {
-                delete inner;
-            }
+            destroy();
             inner = other.inner;
             inner->copies++;
         }
@@ -27,10 +28,7 @@ struct shared_vector {
     }
 
     ~shared_vector() {
-        inner->copies--;
-        if (inner->copies == 0) {
-            delete inner;
-        }
+        destroy();
     }
 
     T& operator[](size_t i) noexcept {
@@ -105,6 +103,13 @@ private:
         if (inner->copies > 1) {
             inner->copies--;
             inner = new inner_vector(inner->vect);
+        }
+    }
+
+    void destroy() {
+        inner->copies--;
+        if (inner->copies == 0) {
+            delete inner;
         }
     }
 };
