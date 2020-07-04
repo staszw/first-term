@@ -142,9 +142,9 @@ private:
     }
 
     void from_small_to_big() {
-        T safe[MAX_SIZE];
-        copy_small(small, safe, size_);
-        new (&big) shared_vector<T>(safe, safe + size_);
+        shared_vector<T> new_big(small, small + size_);
+        clear_small(small, size_);
+        new (&big) shared_vector<T>(new_big);
         is_big = true;
     }
 

@@ -15,7 +15,7 @@ struct shared_vector {
     }
 
     shared_vector(T* begin, T* end) {
-        inner = new inner_vector(std::vector<T>(begin, end));
+        inner = new inner_vector(begin, end);
     }
 
     shared_vector& operator=(shared_vector const& other) {
@@ -93,6 +93,8 @@ private:
         inner_vector() : vect(), copies(1) {}
 
         explicit inner_vector(std::vector<T> const& other) : vect(other), copies(1) {}
+
+        explicit inner_vector(T* begin, T* end) : vect(begin, end), copies(1) {}
 
         ~inner_vector() = default;
     };
